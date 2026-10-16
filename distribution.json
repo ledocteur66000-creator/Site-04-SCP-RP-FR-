@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "rss": "",
+  "servers": [
+    {
+      "id": "scp-rp",
+      "name": "Site-04 SCP RP FR",
+      "description": "Serveur SCP RP Moddé",
+      "icon": "https://www.dropbox.com/scl/fi/4iryimq048hib9k0b4vgc/Embl-me-futuriste-SITE-04.png?rlkey=wjno78gcwzkxv28fxkhzz47vx&st=8zoxikd1&dl=0",
+      "version": "1.20.1",
+      "address": "game2.foxy-inc.ca:30120",
+      "discord": {
+        "clientId": "1560648744339247204",
+        "smallImageKey": "scp-rp",
+        "smallImageText": "Site-04 SCP RP"
+      },
+      "modules": [
+        {
+          "id": "forge",
+          "name": "Minecraft Forge",
+          "type": "Forge",
+          "version": "47.2.0",
+          "required": true
+        },
+        {
+          "id": "mon-pack-mods",
+          "name": "Mods du Serveur",
+          "type": "FileCollection",
+          "url": "https://www.dropbox.com/scl/fi/0q5jzms2cbu8ma64xe92b/Site-04-all.zip?rlkey=giuk36gfjg49y82q9s11zsviq&st=fhj1ac27&dl=0",
+          "path": "mods",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

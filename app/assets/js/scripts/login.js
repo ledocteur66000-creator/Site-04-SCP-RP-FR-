@@ -1,10 +1,9 @@
 /**
- * Script for login.ejs
+ * Script for login.ejs (Modified for Offline/Crack Mode)
  */
 // Validation Regexes.
 const validUsername         = /^[a-zA-Z0-9_]{1,16}$/
 const basicEmail            = /^\S+@\S+\.\S+$/
-//const validEmail          = /^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$/i
 
 // Login Elements
 const loginCancelContainer  = document.getElementById('loginCancelContainer')
@@ -21,12 +20,8 @@ const loginForm             = document.getElementById('loginForm')
 // Control variables.
 let lu = false, lp = false
 
-
 /**
  * Show a login error.
- * 
- * @param {HTMLElement} element The element on which to display the error.
- * @param {string} value The error text.
  */
 function showError(element, value){
     element.innerHTML = value
@@ -35,8 +30,6 @@ function showError(element, value){
 
 /**
  * Shake a login error to add emphasis.
- * 
- * @param {HTMLElement} element The element to shake.
  */
 function shakeError(element){
     if(element.style.opacity == 1){
@@ -47,23 +40,13 @@ function shakeError(element){
 }
 
 /**
- * Validate that an email field is neither empty nor invalid.
- * 
- * @param {string} value The email value.
+ * Validate that an email/username field is not empty.
  */
 function validateEmail(value){
     if(value){
-        if(!basicEmail.test(value) && !validUsername.test(value)){
-            showError(loginEmailError, Lang.queryJS('login.error.invalidValue'))
-            loginDisabled(true)
-            lu = false
-        } else {
-            loginEmailError.style.opacity = 0
-            lu = true
-            if(lp){
-                loginDisabled(false)
-            }
-        }
+        loginEmailError.style.opacity = 0
+        lu = true
+        loginDisabled(false)
     } else {
         lu = false
         showError(loginEmailError, Lang.queryJS('login.error.requiredValue'))
@@ -72,22 +55,11 @@ function validateEmail(value){
 }
 
 /**
- * Validate that the password field is not empty.
- * 
- * @param {string} value The password value.
+ * Validate password (not required for offline mode).
  */
 function validatePassword(value){
-    if(value){
-        loginPasswordError.style.opacity = 0
-        lp = true
-        if(lu){
-            loginDisabled(false)
-        }
-    } else {
-        lp = false
-        showError(loginPasswordError, Lang.queryJS('login.error.invalidValue'))
-        loginDisabled(true)
-    }
+    // Pas de validation requise pour le mode crack
+    lp = true
 }
 
 // Emphasize errors with shake when focus is lost.
@@ -95,23 +67,14 @@ loginUsername.addEventListener('focusout', (e) => {
     validateEmail(e.target.value)
     shakeError(loginEmailError)
 })
-loginPassword.addEventListener('focusout', (e) => {
-    validatePassword(e.target.value)
-    shakeError(loginPasswordError)
-})
 
 // Validate input for each field.
 loginUsername.addEventListener('input', (e) => {
     validateEmail(e.target.value)
 })
-loginPassword.addEventListener('input', (e) => {
-    validatePassword(e.target.value)
-})
 
 /**
  * Enable or disable the login button.
- * 
- * @param {boolean} v True to enable, false to disable.
  */
 function loginDisabled(v){
     if(loginButton.disabled !== v){
@@ -121,8 +84,6 @@ function loginDisabled(v){
 
 /**
  * Enable or disable loading elements.
- * 
- * @param {boolean} v True to enable, false to disable.
  */
 function loginLoading(v){
     if(v){
@@ -136,8 +97,6 @@ function loginLoading(v){
 
 /**
  * Enable or disable login form.
- * 
- * @param {boolean} v True to enable, false to disable.
  */
 function formDisabled(v){
     loginDisabled(v)
@@ -179,28 +138,36 @@ loginCancelButton.onclick = (e) => {
 // Disable default form behavior.
 loginForm.onsubmit = () => { return false }
 
-// Bind login button behavior.
+// Bind login button behavior for Offline Mode.
 loginButton.addEventListener('click', () => {
-    // Disable form.
-    formDisabled(true)
+    const username = loginUsername.value.trim();
 
-    // Show loading stuff.
+    // Vérifie que la case pseudo n'est pas vide
+    if(username === '') {
+        showError(loginEmailError, "Veuillez entrer un pseudonyme !")
+        shakeError(loginEmailError)
+        return;
+    }
+
+    formDisabled(true)
     loginLoading(true)
 
-    AuthManager.addMojangAccount(loginUsername.value, loginPassword.value).then((value) => {
+    // Appel de la fonction hors-ligne d'AuthManager
+    AuthManager.addOfflineAccount(username).then((value) => {
         updateSelectedAccount(value)
+        
         loginButton.innerHTML = loginButton.innerHTML.replace(Lang.queryJS('login.loggingIn'), Lang.queryJS('login.success'))
         $('.circle-loader').toggleClass('load-complete')
         $('.checkmark').toggle()
+        
         setTimeout(() => {
             switchView(VIEWS.login, loginViewOnSuccess, 500, 500, async () => {
-                // Temporary workaround
                 if(loginViewOnSuccess === VIEWS.settings){
                     await prepareSettings()
                 }
-                loginViewOnSuccess = VIEWS.landing // Reset this for good measure.
-                loginCancelEnabled(false) // Reset this for good measure.
-                loginViewCancelHandler = null // Reset this for good measure.
+                loginViewOnSuccess = VIEWS.landing
+                loginCancelEnabled(false)
+                loginViewCancelHandler = null
                 loginUsername.value = ''
                 loginPassword.value = ''
                 $('.circle-loader').toggleClass('load-complete')
@@ -212,23 +179,16 @@ loginButton.addEventListener('click', () => {
         }, 1000)
     }).catch((displayableError) => {
         loginLoading(false)
-
-        let actualDisplayableError
-        if(isDisplayableError(displayableError)) {
-            msftLoginLogger.error('Error while logging in.', displayableError)
-            actualDisplayableError = displayableError
-        } else {
-            // Uh oh.
-            msftLoginLogger.error('Unhandled error during login.', displayableError)
-            actualDisplayableError = Lang.queryJS('login.error.unknown')
-        }
-
-        setOverlayContent(actualDisplayableError.title, actualDisplayableError.desc, Lang.queryJS('login.tryAgain'))
+        formDisabled(false)
+        
+        setOverlayContent(
+            displayableError.title || "Erreur de connexion", 
+            displayableError.desc || "Impossible de generer la session hors-ligne.", 
+            Lang.queryJS('login.tryAgain')
+        )
         setOverlayHandler(() => {
-            formDisabled(false)
             toggleOverlay(false)
         })
         toggleOverlay(true)
     })
-
 })

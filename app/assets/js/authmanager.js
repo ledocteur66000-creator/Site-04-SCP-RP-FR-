@@ -14,10 +14,64 @@ const { LoggerUtil }         = require('helios-core')
 const { RestResponseStatus } = require('helios-core/common')
 const { MojangRestAPI, MojangErrorCode } = require('helios-core/mojang')
 const { MicrosoftAuth, MicrosoftErrorCode } = require('helios-core/microsoft')
+/**
+ * AuthManager
+ * 
+ * This module aims to abstract login procedures. Results from Mojang's REST api
+ * are retrieved through our Mojang module. These results are processed and stored,
+ * if applicable, in the config using the ConfigManager. All login procedures should
+ * be made through this module.
+ * 
+ * @module authmanager
+ */
+// Requirements
+const ConfigManager          = require('./configmanager')
+const { LoggerUtil }         = require('helios-core')
+const { RestResponseStatus } = require('helios-core/common')
+const { MojangRestAPI, MojangErrorCode } = require('helios-core/mojang')
+const { MicrosoftAuth, MicrosoftErrorCode } = require('helios-core/microsoft')
 const { AZURE_CLIENT_ID }    = require('./ipcconstants')
 const Lang = require('./langloader')
 
+// La variable log est définie ICI maintenant (sécurisé)
 const log = LoggerUtil.getLogger('AuthManager')
+
+/**
+ * Ajoute un compte Hors-ligne (Crack) sans passer par Microsoft.
+ * @param {string} username Le pseudonyme choisi par le joueur.
+ * @returns {Promise.<Object>} Le compte configuré pour Helios.
+ */
+exports.addOfflineAccount = async function(username) {
+    try {
+        log.info(`Connexion hors-ligne tentée pour le joueur : ${username}`)
+        
+        // On génère un faux ID unique (UUID) basé sur le pseudo pour que Minecraft l'accepte
+        const crypto = require('crypto')
+        const fakeUUID = crypto.createHash('md5').update('OfflinePlayer:' + username).digest('hex')
+        
+        // On génère un faux Token d'accès (requis par le moteur du jeu)
+        const fakeAccessToken = crypto.randomBytes(16).toString('hex')
+
+        // On enregistre le compte dans la configuration d'Helios
+        const ret = ConfigManager.addMojangAuthAccount(fakeUUID, fakeAccessToken, username, username)
+        
+        ConfigManager.save()
+        return ret
+    } catch (err) {
+        log.error('Erreur lors de la création du compte hors-ligne :', err)
+        return Promise.reject({
+            title: "Erreur de connexion",
+            desc: "Impossible de générer le profil hors-ligne."
+        })
+    }
+}
+
+// Error messages
+
+function microsoftErrorDisplayable(errorCode) { erreur}
+
+const { AZURE_CLIENT_ID }    = require('./ipcconstants')
+const Lang = require('./langloader')
 
 // Error messages
 
